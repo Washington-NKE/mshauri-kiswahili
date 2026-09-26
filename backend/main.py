@@ -1,10 +1,7 @@
-import os
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
 
 from core.config import settings
 from core.exceptions import DomainException, domain_exception_handler
@@ -56,23 +53,19 @@ app.add_exception_handler(DomainException, domain_exception_handler)
 # Include API Router
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# Mount Web UI frontend static files
-frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))
-if os.path.exists(frontend_dir):
-    app.mount("/ui", StaticFiles(directory=frontend_dir, html=True), name="ui")
-
-
 @app.get("/", tags=["Health"])
 def root():
-    # Redirect root to UI if frontend exists
-    if os.path.exists(frontend_dir):
-        return RedirectResponse(url="/ui/")
     return {
         "message": "Karibu Mshauri Kiswahili API!",
         "status": "online",
         "version": "1.0.0",
         "docs_url": "/docs"
     }
+
+
+@app.get("/health", tags=["Health"])
+def health():
+    return {"status": "ok"}
 
 
 if __name__ == "__main__":

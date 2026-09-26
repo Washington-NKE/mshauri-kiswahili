@@ -19,8 +19,10 @@ def synthesize_response(query: str, doc: Optional[CampusDocument]) -> str:
     """
     if not doc:
         return (
-            "Kulingana na mfumo wa Mshauri Kiswahili, hakuna taarifa rasmi "
-            "iliyopatikana kuhusu swali lako. Tafadhali tembelea ofisi ya msajili wa chuo."
+            "Sina taarifa rasmi ya chuo inayojibu swali hili, kwa hiyo sitabuni "
+            "tarehe, ada au taratibu. Sera hutofautiana kati ya vyuo; angalia "
+            "portal rasmi ya chuo au wasiliana na ofisi husika. Taja jina la chuo "
+            "na maelezo zaidi ili nipunguze utafutaji."
         )
 
     doc_context = (

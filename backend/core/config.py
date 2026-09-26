@@ -1,4 +1,3 @@
-import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -8,11 +7,11 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     API_V1_STR: str = "/api/v1"
 
-    # Database Configuration (Neon PostgreSQL or SQLite fallback)
-    DATABASE_URL: str = "postgresql://neondb_owner:npg_gS8RCOhpTYK3@ep-soft-fog-b5gas5gq.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    # Set DATABASE_URL in .env to use PostgreSQL; local development defaults to SQLite.
+    DATABASE_URL: str = "sqlite:///./mshauri.db"
 
     # Gemini API settings
-    GEMINI_API_KEY: str = "AIzaSyDzGMRdNTzGIfywesPmqKEUa1Uo87_Z5tY"
+    GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-2.5-flash"
 
     model_config = SettingsConfigDict(

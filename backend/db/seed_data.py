@@ -20,31 +20,31 @@ def seed_database(db: Session) -> None:
 
     # 1. Seed Grammar Rules
     print("Seeding Grammar Rules (Ngeli & Affixes)...")
-    for item in GRAMMAR_RULES_DATA:
-        existing = db.query(GrammarRule).filter_by(code=item["code"]).first()
-        if not existing:
-            db.add(GrammarRule(**item))
-    db.commit()
+    existing_rule_codes = {r[0] for r in db.query(GrammarRule.code).all()}
+    new_rules = [GrammarRule(**item) for item in GRAMMAR_RULES_DATA if item["code"] not in existing_rule_codes]
+    if new_rules:
+        db.bulk_save_objects(new_rules)
+        db.commit()
 
     # 2. Seed Swahili Lexicon
     print("Seeding Swahili Lexicon entries...")
-    for item in LEXICON_DATA:
-        existing = db.query(SwahiliLexicon).filter_by(
-            root=item["root"], canonical_lemma=item["canonical_lemma"]
-        ).first()
-        if not existing:
-            db.add(SwahiliLexicon(**item))
-    db.commit()
+    existing_lexicon = {(l[0], l[1]) for l in db.query(SwahiliLexicon.root, SwahiliLexicon.canonical_lemma).all()}
+    new_lexicon = [
+        SwahiliLexicon(**item) for item in LEXICON_DATA
+        if (item["root"], item["canonical_lemma"]) not in existing_lexicon
+    ]
+    if new_lexicon:
+        db.bulk_save_objects(new_lexicon)
+        db.commit()
 
     # 3. Seed Campus Documents
     print("Seeding Campus Policy Documents...")
     all_docs = DOCUMENT_SEEDS_PART1 + DOCUMENT_SEEDS_PART2
-    for doc in all_docs:
-        existing = db.query(CampusDocument).filter_by(intent_key=doc["intent_key"]).first()
-        if not existing:
-            c_doc = CampusDocument(**doc)
-            db.add(c_doc)
-    db.commit()
+    existing_doc_intents = {d[0] for d in db.query(CampusDocument.intent_key).all()}
+    new_docs = [CampusDocument(**doc) for doc in all_docs if doc["intent_key"] not in existing_doc_intents]
+    if new_docs:
+        db.bulk_save_objects(new_docs)
+        db.commit()
 
     # Update TSVector search_vector for PostgreSQL if available
     if bind_engine and bind_engine.dialect.name == "postgresql":
@@ -64,17 +64,20 @@ def seed_database(db: Session) -> None:
         ("Ratiba ya mitihani itatoka lini?", "When will the exam timetable be released?", "exam_timetable"),
         ("Ninawezaje kuomba mkopo wa HELB?", "How can I apply for HELB loan?", "student_loans")
     ]
+    existing_benchmarks = {b[0] for b in db.query(BenchmarkQuery.swahili_query).all()}
+    doc_map = {d[0]: d[1] for d in db.query(CampusDocument.intent_key, CampusDocument.id).all()}
+    new_benchmarks = []
     for sq, eq, intent in benchmarks:
-        doc = db.query(CampusDocument).filter_by(intent_key=intent).first()
-        existing = db.query(BenchmarkQuery).filter_by(swahili_query=sq).first()
-        if not existing:
-            db.add(BenchmarkQuery(
+        if sq not in existing_benchmarks:
+            new_benchmarks.append(BenchmarkQuery(
                 swahili_query=sq,
                 english_translation=eq,
                 target_intent=intent,
-                expected_document_id=doc.id if doc else None
+                expected_document_id=doc_map.get(intent)
             ))
-    db.commit()
+    if new_benchmarks:
+        db.bulk_save_objects(new_benchmarks)
+        db.commit()
     print("Seeding completed successfully!")
 
 

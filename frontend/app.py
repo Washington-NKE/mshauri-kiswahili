@@ -7,7 +7,7 @@ from intent_map import get_best_intent
 API_ENDPOINT = os.getenv("API_ENDPOINT", "http://localhost:8000/api/v1/query/")
 
 st.set_page_config(
-    page_title="Mshauri Kiswahili 🇰🇪",
+    page_title="Mshauri wa Kiswahili 🇰🇪",
     page_icon="📜",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -34,60 +34,75 @@ st.markdown("""
 
 # Sidebar Navigation Mode Switcher
 st.sidebar.image("https://img.icons8.com/isometric/100/scroll.png", width=64)
-st.sidebar.title("Mshauri Kiswahili")
-st.sidebar.caption("Bantu Computational Linguistics & Gemini 2.5 RAG")
+st.sidebar.title("Mshauri wa Kiswahili")
+st.sidebar.caption("Msaidizi wa masomo na huduma za chuo kikuu")
 
 view_mode = st.sidebar.radio(
-    "Chagua Muonekano (Select View):",
+    "Chagua mwonekano:",
     [
-        "📱 Minimalist Student UI (Live User Experience)",
-        "🔬 Hackathon Pitching UI (Backend Deconstruction for Judges)"
+        "Mwonekano wa mwanafunzi",
+        "Mwonekano wa majaribio ya mfumo"
     ]
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("**Sample Test Queries:**")
+st.sidebar.markdown("**Maswali ya mfano:**")
 sample_queries = [
     "Ninawezaje kulipa ada ya shule kwa awamu?",
     "Nini kitatokea nisiposajili vitengo vyangu?",
     "Nimepoteza kitambulisho changu, nifanyeje?",
     "Ratiba ya mitihani itatoka lini?",
-    "Ninawezaje kuomba mkopo wa HELB?"
+    "Ninawezaje kuomba mkopo wa HELB?",
+    "Je, ninawezaje kufuga kuku au wanyama kwenye bweni la chuo? (⚠️ Fallback Demo)"
 ]
-selected_sample = st.sidebar.selectbox("Chagua Swali la Mfano:", ["-- Andika Yako --"] + sample_queries)
+selected_sample = st.sidebar.selectbox("Chagua swali la mfano:", ["Andika swali lako mwenyewe"] + sample_queries)
+
+# Clean selected sample text if tag present
+clean_selected_sample = selected_sample.split(" (⚠️")[0] if selected_sample != "Andika swali lako mwenyewe" else ""
 
 # Initialize Session State
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
+
 # Function to Query Backend API
 def query_backend(user_text: str):
     try:
-        resp = requests.post(API_ENDPOINT, json={"query": user_text}, timeout=5)
-        if resp.status_code == 200:
-            return resp.json()
-    except Exception:
-        pass
+        resp = requests.post(API_ENDPOINT, json={"query": user_text}, timeout=10)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.Timeout:
+        api_error = "timeout"
+    except requests.ConnectionError:
+        api_error = "connection"
+    except requests.HTTPError as error:
+        api_error = f"http_{error.response.status_code}"
+    except requests.RequestException:
+        api_error = "request_error"
+    except ValueError:
+        api_error = "invalid_json"
+
     # Fallback to local offline intent extraction
     roots = process_full_query(user_text)
     intent = get_best_intent(roots)
     return {
         "query": user_text,
-        "answer_swahili": f"Kulingana na mfumo wa Mshauri Kiswahili (Sera: `{intent}`):\n\nTafadhali hakikisha unazingatia sheria rasmi za chuo kikuu.",
+        "answer_swahili": "Samahani, huduma ya taarifa rasmi haipatikani kwa sasa. Tafadhali wasiliana na ofisi husika ya chuo ili kupata maelezo sahihi.",
         "morphological_breakdown": {
             "tokens": user_text.split(),
             "extracted_roots": roots,
             "inferred_intent": intent
         },
-        "grounding_source": None
+        "grounding_source": None,
+        "_api_error": api_error
     }
 
 
 # ==========================================
 # INTERFACE 1: MINIMALIST STUDENT EXPERIENCE
 # ==========================================
-if "📱 Minimalist" in view_mode:
-    st.title("Mshauri Kiswahili 🇰🇪")
+if "Mwonekano wa mwanafunzi" in view_mode or "📱" in view_mode:
+    st.title("Mshauri wa Kiswahili 🇰🇪")
     st.caption("Msaidizi wako rasmi wa sera na taaluma za chuo kikuu")
 
     # Display Chat History
@@ -95,7 +110,7 @@ if "📱 Minimalist" in view_mode:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-    default_val = selected_sample if selected_sample != "-- Andika Yako --" else ""
+    default_val = clean_selected_sample
     user_input = st.chat_input("Andika swali lako kwa Kiswahili...") or default_val
 
     if user_input:
@@ -104,16 +119,20 @@ if "📱 Minimalist" in view_mode:
             st.markdown(user_input)
 
         with st.chat_message("assistant"):
-            with st.spinner("Inachanganua sarufi na kutafuta sera..."):
+            with st.spinner("Ninatafuta taarifa rasmi za chuo..."):
                 res = query_backend(user_input)
                 answer = res.get("answer_swahili", "")
                 st.markdown(answer)
-                
+
                 doc = res.get("grounding_source")
                 if doc:
-                    with st.expander("📄 Chanzo cha Sera (Official Policy Document)"):
-                        st.caption(f"**{doc.get('title')}** (Category: `{doc.get('category')}`) ")
-                        st.write(doc.get("content_english"))
+                    with st.expander("📄 Chanzo cha taarifa"):
+                        if doc.get("content_swahili"):
+                            st.write(doc["content_swahili"])
+                        elif doc.get("content_english"):
+                            st.caption("Tafsiri ya Kiswahili haipo; maelezo yafuatayo yameandikwa kwa Kiingereza:")
+                            st.write(doc["title"])
+                            st.write(doc["content_english"])
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
 
@@ -122,7 +141,7 @@ if "📱 Minimalist" in view_mode:
 # INTERFACE 2: HACKATHON PITCHING UI (JUDGES)
 # ==========================================
 else:
-    st.title("🔬 Hackathon Pitching Interface — Backend Deconstruction")
+    st.title("Backend Deconstruction")
     st.caption("Live pipeline execution: Swahili Query -> Bantu Morphology -> Intent Classification -> GIN FTS -> Gemini Synthesis")
 
     col_input, col_pipe = st.columns([1, 1])
@@ -131,17 +150,17 @@ else:
         st.subheader("1. User Query & Local NLP Processing")
         test_q = st.text_area(
             "Input Kiswahili Query:",
-            value=selected_sample if selected_sample != "-- Andika Yako --" else "Ninawezaje kulipa ada ya shule kwa awamu?",
+            value=clean_selected_sample if clean_selected_sample else "Ninawezaje kulipa ada ya shule kwa awamu?",
             height=100
         )
-        btn_run = st.button("🚀 Run Live Pipeline", use_container_width=True)
+        btn_run = st.button("Run Live Pipeline", use_container_width=True)
 
         if test_q or btn_run:
             local_roots = process_full_query(test_q)
             local_intent = get_best_intent(local_roots)
 
             st.markdown("<div class='card-box'>", unsafe_allow_html=True)
-            st.markdown("#### 🔹 Person B: NLP Morphology Engine")
+            st.markdown("#### NLP Morphology Engine")
             st.write(f"**Raw Tokens:** `{test_q.split()}`")
             st.write(f"**Stripped Extracted Roots:** `{local_roots}`")
             st.write(f"**Mapped SQL Search Intent:** `{local_intent}`")
@@ -152,17 +171,24 @@ else:
         if test_q or btn_run:
             api_res = query_backend(test_q)
             doc = api_res.get("grounding_source")
+            inferred_intent = api_res.get("morphological_breakdown", {}).get("inferred_intent", local_intent)
 
             st.markdown("<div class='card-box'>", unsafe_allow_html=True)
-            st.markdown("#### 🔹 Person A: Database Retrieval & LLM")
-            if doc:
-                st.success(f"Matched Document ID: #{doc.get('id')} — {doc.get('title')}")
+            st.markdown("#### Database Retrieval & LLM Grounding")
+            if api_error := api_res.get("_api_error"):
+                st.error(f"Backend API error: {api_error}")
+                st.write(f"**Nia iliyotambuliwa:** `{inferred_intent}`")
+                st.caption("Hakikisha FastAPI inaendeshwa kwenye port 8000 (API_ENDPOINT).")
+            elif doc:
+                st.success(f"✅ Matched Document ID: #{doc.get('id')} — {doc.get('title')}")
                 st.write(f"**English Knowledge Snippet:** _{doc.get('content_english')}_")
             else:
-                st.warning("No PostgreSQL GIN index match found. Using fallback intent.")
+                st.warning("⚠️ **Fallback Response Triggered (Unmapped Intent / No Document Match)**")
+                st.write(f"**Nia iliyotambuliwa:** `{inferred_intent}`")
+                st.caption("Hakuna sera au hati inayolingana katika hifadhidata. Mfumo unatoa jibu la tahadhari ambalo halibuni tarehe, ada au sheria za uongo.")
             st.markdown("</div>", unsafe_allow_html=True)
 
             st.markdown("<div class='card-box'>", unsafe_allow_html=True)
-            st.markdown("#### 🔹 Final Output: Gemini 2.5 Grounded Swahili")
+            st.markdown("#### Final Output: AI Grounded Swahili response")
             st.markdown(api_res.get("answer_swahili", ""))
             st.markdown("</div>", unsafe_allow_html=True)

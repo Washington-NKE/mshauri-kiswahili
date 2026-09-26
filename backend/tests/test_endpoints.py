@@ -11,6 +11,38 @@ def test_query_endpoint(client):
     assert data["grounding_source"]["intent_key"] == "tuition_fees"
 
 
+def test_exam_timetable_sample_matches_policy(client):
+    response = client.post(
+        "/api/v1/query/", json={"query": "Ratiba ya mitihani itatoka lini?"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["morphological_breakdown"]["inferred_intent"] == "exam_timetable"
+    assert data["grounding_source"]["intent_key"] == "exam_timetable"
+
+
+def test_unrecognized_question_is_not_grounded_in_an_unrelated_policy(client):
+    response = client.post(
+        "/api/v1/query/", json={"query": "Where can I check today's weather?"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["grounding_source"] is None
+    assert data["retrieved_documents"] == []
+    assert "Sina taarifa rasmi" in data["answer_swahili"]
+
+
+def test_blank_query_is_rejected(client):
+    response = client.post("/api/v1/query/", json={"query": "   "})
+    assert response.status_code == 422
+
+
+def test_health_endpoint(client):
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
 def test_morphology_analyze_endpoint(client):
     payload = {"text": "ninawezaje"}
     response = client.post("/api/v1/morphology/analyze", json=payload)

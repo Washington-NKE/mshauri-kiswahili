@@ -22,6 +22,7 @@ try:
             max_overflow=20,
             pool_pre_ping=True,
             pool_recycle=300,
+            connect_args={"connect_timeout": 5},
         )
     else:
         engine = create_engine(db_url, connect_args=connect_args)

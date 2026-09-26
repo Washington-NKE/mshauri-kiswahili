@@ -32,7 +32,9 @@ def process_swahili_query(
     roots, intent_key = extract_lemma_and_intent(tokens, db)
 
     # 2. Hybrid document retrieval
-    retrieved_docs = retrieve_documents(db, raw_query=raw_query, limit=3)
+    retrieved_docs = retrieve_documents(
+        db, raw_query=raw_query, limit=3, intent_key=intent_key
+    )
     grounding_doc = retrieved_docs[0] if retrieved_docs else None
 
     # 3. Gemini cross-lingual synthesis

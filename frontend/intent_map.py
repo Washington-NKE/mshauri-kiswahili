@@ -1,7 +1,6 @@
-# intent_map.py
-# Entity and Action Intent Mapping for Kiswahili Campus Query Classifier
+# Entity and Action Intent Mapping for Kiswahili Campus Query Classification
 
-# 1. High-Priority Context Nouns (Entities) - Two-Pass Priority System
+# High-priority context nouns take precedence over action verbs.
 entity_intents = {
     "klabu": "clubs_and_societies",
     "shirika": "clubs_and_societies",
@@ -53,7 +52,7 @@ entity_intents = {
     "nyanjani": "industrial_attachment",
 }
 
-# 2. Low-Priority Verbs (Actions) - Fallback if no entity noun matches
+# Lower-priority verbs are used only if no context noun matched.
 action_intents = {
     "sajili": "course_registration",
     "jiunga": "admissions",
@@ -68,17 +67,12 @@ action_intents = {
 
 
 def get_best_intent(roots_list: list) -> str:
-    """
-    Scans extracted roots using a two-pass priority system.
-    Nouns override verbs to prevent intent collisions.
-    """
-    # Pass 1: High-priority context entity nouns
+    """Choose an intent, preferring context nouns over action verbs."""
     for root in roots_list:
         clean_root = root.lower().strip()
         if clean_root in entity_intents and entity_intents[clean_root]:
             return entity_intents[clean_root]
 
-    # Pass 2: Low-priority action verbs fallback
     for root in roots_list:
         clean_root = root.lower().strip()
         if clean_root in action_intents and action_intents[clean_root]:

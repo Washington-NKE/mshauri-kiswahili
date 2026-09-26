@@ -29,3 +29,20 @@ def test_retrieve_exam_timetable(db_session):
 def test_retrieve_multiple_documents(db_session):
     docs = retrieve_documents(db_session, "Ada na masomo", limit=3)
     assert len(docs) >= 1
+
+
+def test_retrieve_portal_password_question(db_session):
+    doc = retrieve_document(db_session, "Nimesahau password ya portal yangu")
+    assert doc is not None
+    assert doc.intent_key == "ict_portal"
+
+
+def test_retrieve_internship_question(db_session):
+    doc = retrieve_document(db_session, "How do I apply for an internship?")
+    assert doc is not None
+    assert doc.intent_key == "industrial_attachment"
+
+
+def test_unrelated_question_has_no_matching_document(db_session):
+    docs = retrieve_documents(db_session, "Where can I check today's weather?")
+    assert docs == []
